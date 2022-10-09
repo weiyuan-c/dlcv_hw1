@@ -1,0 +1,1 @@
+python3 p1.py --test_dir $1 --csv_dir $2 --weight1 model1.ckpt --weight2 model2.ckpt
