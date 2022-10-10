@@ -126,6 +126,6 @@ if __name__ == '__main__':
 
     df = pd.DataFrame()
     ids = sorted([x.split('/')[-1] for x in glob.glob(os.path.join(cfg.test_dir, '*.png'))])
-    df['image_id'] = np.array(ids)
+    df['filename'] = np.array(ids)
     df['label'] = val_pred
     df.to_csv(cfg.csv_dir, index=False)
