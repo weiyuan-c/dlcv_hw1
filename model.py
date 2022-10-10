@@ -111,16 +111,16 @@ class vgg_fcn8(nn.Module):
         )
         self.conv1 = nn.Conv2d(4096, n_class, 1)
         self.up1 = nn.Sequential(
-            nn.ConvTranspose2d(7, 7, 4, 2, 1),
+            nn.ConvTranspose2d(n_class, n_class, 4, 2, 1),
             nn.ReLU(inplace=True)
         )
         self.conv2 = nn.Conv2d(512, n_class, 1)
         self.up2 = self.up1 = nn.Sequential(
-            nn.ConvTranspose2d(7, 7, 4, 2, 1),
+            nn.ConvTranspose2d(n_class, n_class, 4, 2, 1),
             nn.ReLU(inplace=True)
         )
         self.conv3 = nn.Conv2d(256, n_class, 1)
-        self.up3 = nn.ConvTranspose2d(7, 7, 16, 8, 4)
+        self.up3 = nn.ConvTranspose2d(n_class, n_class, 16, 8, 4)
     def forward(self, x):
         x8 = self.vgg[:17](x) # pool 3 [, 256, 64, 64]
         x16 = self.vgg[17:24](x8) # pool4 [, 512, 32, 32]
@@ -140,7 +140,7 @@ class vgg_fcn8(nn.Module):
 
 # VGG16-FCN8-2
 class vgg_fcn8_2(nn.Module):
-    def __init__(self, weights=VGG16_Weights.DEFAULT):
+    def __init__(self, n_class=7, weights=VGG16_Weights.DEFAULT):
         super(vgg_fcn8_2, self).__init__()
         self.vgg = torchvision.models.vgg16(weights=weights).features
 
@@ -174,7 +174,7 @@ class vgg_fcn8_2(nn.Module):
             nn.BatchNorm2d(32)
         )
 
-        self.classifier = nn.Conv2d(32, 7, 1)
+        self.classifier = nn.Conv2d(32, n_class, 1)
 
     def forward(self, x):
         x8 = self.vgg[:17](x)
