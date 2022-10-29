@@ -4,14 +4,11 @@ import argparse
 import torch
 import torchvision.transforms as T
 from torch.utils.data import Dataset, DataLoader
-import skimage
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
-
-from mean_iou_evaluate import mean_iou_score, read_masks
 from model import vgg_fcn8, vgg_fcn8_2
-
+import imageio
 
 class Inf_SegDataset(Dataset):
     def __init__(self, path, sat=None):
@@ -73,23 +70,17 @@ if __name__ == '__main__':
     val_set = Inf_SegDataset(cfg.test_dir)
     val_loader = DataLoader(val_set, batch_size=cfg.batch_size, shuffle=False)
     
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(device)
-    # simple model
+    
     model1 = vgg_fcn8_2(weights=None).to(device)
     model2 = vgg_fcn8_2(weights=None).to(device)
-    # 2
     model3 = vgg_fcn8(weights=None).to(device)
     
 
-    if device == 'cpu':
-        model1.load_state_dict(torch.load(cfg.weight1, map_location='cpu'))
-        model2.load_state_dict(torch.load(cfg.weight2, map_location='cpu'))
-        model3.load_state_dict(torch.load(cfg.weight3, map_location='cpu'))
-    else:
-        model1.load_state_dict(torch.load(cfg.weight1))
-        model2.load_state_dict(torch.load(cfg.weight2))
-        model3.load_state_dict(torch.load(cfg.weight3))
+    model1.load_state_dict(torch.load(cfg.weight1, map_location=device))
+    model2.load_state_dict(torch.load(cfg.weight2, map_location=device))
+    model3.load_state_dict(torch.load(cfg.weight3, map_location=device))
 
     model1.eval()
     model2.eval()
@@ -98,6 +89,8 @@ if __name__ == '__main__':
 
     for batch in tqdm(val_loader):
         img, name = batch
+        img = img.to(device)
+
         with torch.no_grad():
             output1 = model1(img)
             output2 = model2(img)
@@ -110,5 +103,6 @@ if __name__ == '__main__':
             fname = name[i]
             recon = recon_seg(im)
             recon = np.uint8(recon)
-            save_dir = f'{cfg.output_dir}/{fname}.png'
-            skimage.io.imsave(save_dir, recon, check_contrast=False)
+            save_dir = os.path.join(cfg.output_dir, '%s.png'%fname)
+            imageio.imsave(save_dir, recon)
+            
