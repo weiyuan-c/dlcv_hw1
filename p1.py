@@ -2,13 +2,9 @@ import argparse
 import os
 import glob
 import random
-
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 import torchvision.transforms as T
 from torch.utils.data import Dataset, DataLoader
-
 import numpy as np
 import pandas as pd
 from PIL import Image
@@ -66,40 +62,29 @@ if __name__ == '__main__':
     # data transfomation
     norm = T.Normalize(mean=[0.485,0.456,0.406], std = [0.229, 0.224, 0.225])
     test_tfm = T.Compose([
-        T.Resize(cfg.img_size),
+        T.Resize((cfg.img_size, cfg.img_size)),
         T.ToTensor(),
         norm
     ])
 
-
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('device:', device)
     
     # load model
     model1 = Classifier(weights=None).to(device)
     model2 = Classifier(weights=None).to(device)
-    
     # dataset
     val_set = ImgDataset(cfg.test_dir, tfm = test_tfm)
     val_loader = DataLoader(val_set, batch_size=cfg.batch_size, shuffle=False)
 
     # load weight
-    if device == 'cpu':
-        model1.load_state_dict(torch.load(cfg.weight1, map_location='cpu'))
-        model2.load_state_dict(torch.load(cfg.weight2, map_location='cpu'))
-    else:
-        model1.load_state_dict(torch.load(cfg.weight1))
-        model2.load_state_dict(torch.load(cfg.weight2))
-
-    model1.to(device)
-    model2.to(device)
-    criterion = nn.CrossEntropyLoss()
+    model1.load_state_dict(torch.load(cfg.weight1, map_location=device))
+    model2.load_state_dict(torch.load(cfg.weight2, map_location=device))
 
     # validation 
     model1.eval()
     model2.eval()
     val_pred = []
-    val_loss = []
     val_acc = []
     total_len = 0
     for i, batch in enumerate(tqdm(val_loader)):
@@ -111,17 +96,14 @@ if __name__ == '__main__':
             output = model1(img)
             output2 = model2(img)
             output = (output + output2) / 2
-            pred = list(output.argmax(dim=1).squeeze().cpu().numpy())
+            pred = list(output.argmax(dim=1).squeeze().detach().cpu().numpy())
         val_pred += pred
-        loss = criterion(output, label)
         acc = (output.argmax(dim=-1) == label).float().sum()
-        val_loss.append(loss.item())
         val_acc.append(acc)
         total_len += int(img.shape[0])
 
-    validation_loss = sum(val_loss) / len(val_loss)
     validation_acc = sum(val_acc) / total_len 
-    print(f'[ Validation ] loss = {validation_loss:.5f}, acc = {validation_acc:.5f}')
+    print(f'[ Validation ] acc = {validation_acc:.5f}')
 
 
     df = pd.DataFrame()
@@ -129,3 +111,4 @@ if __name__ == '__main__':
     df['filename'] = np.array(ids)
     df['label'] = val_pred
     df.to_csv(cfg.csv_dir, index=False)
+    
